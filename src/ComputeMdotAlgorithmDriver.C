@@ -152,7 +152,8 @@ ComputeMdotAlgorithmDriver::post_work()
     size_t g_ip = 0;
     stk::all_reduce_sum(comm, &l_ip, &g_ip, 1);
     solnOpts_.mdotAlgOpenIpCount_ = g_ip;
-    const double finalCorrection = (g_sum[0] + g_sum[1] + g_sum[2])/g_ip;
+  //const double finalCorrection = (g_sum[0] + g_sum[1] + g_sum[2])/g_ip;
+    const double finalCorrection = (g_sum[1])/(-g_sum[2]);
     solnOpts_.mdotAlgOpenCorrection_ = finalCorrection;
     solnOpts_.mdotAlgOpenIpCount_ = g_ip;
     correct_open_mdot(finalCorrection);
@@ -322,7 +323,9 @@ ComputeMdotAlgorithmDriver::correct_open_mdot(const double finalCorrection)
 
         // loop over boundary ips and correct open mdot
         for ( int ip = 0; ip < numScsBip; ++ip ) {
-          mdot[ip] -= finalCorrection;
+        //mdot[ip] -= finalCorrection;
+        //mdotSum += mdot[ip];
+          mdot[ip] *= finalCorrection;
           mdotSum += mdot[ip];
         }
       }
