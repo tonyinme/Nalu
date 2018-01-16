@@ -90,7 +90,10 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
   // extract global algorithm options, if active
   const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
     ? realm_.solutionOptions_->mdotAlgOpenCorrection_
-    : 0.0;
+    : 1.0;
+//const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+//  ? realm_.solutionOptions_->mdotAlgOpenCorrection_
+//  : 0.0;
   const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
     ? 0.0
     : 1.0;
@@ -226,15 +229,18 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
         const double rhoBip = densityR;
 
         //  mdot
-        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac - mdotCorrection;
+      //double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac - mdotCorrection;
+        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[faceOffSet+j];
           const double coordIp = 0.5*(coordR[j] + coordL[j]);
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-            - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+          tmdot += (rhoBip*vrtmR[j]*mdotCorrection+projTimeScale*Gjp*pstabFac)*axj
+                  - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+        //tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
+        //  - projTimeScale*kxj*Gjp*nocFac*pstabFac;
         }
 
         // rhs

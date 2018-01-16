@@ -100,6 +100,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   // interpolation for mdot uses nearest node, therefore, n/a
 
   // set accumulation variables
+  double mdotInflow = 0.0;
   double mdotOpen = 0.0;
   size_t mdotOpenIpCount = 0;
 
@@ -201,13 +202,24 @@ ComputeMdotEdgeOpenAlgorithm::execute()
           tmdot += (rhoBip*vrtm[j]+projTimeScale*Gjp)*axj
             - projTimeScale*kxj*Gjp*nocFac;
         }
-        // scatter to mdot and accumulate
+        // scatter to mdot
         mdot[ip] = tmdot;
-        mdotOpen += tmdot;
+
+        // Accumulate the mdot (outgoing flow only).
+        if ( tmdot > 0.0)
+        {
+           mdotOpen += tmdot;
+           mdotOpenIpCount++;
+        }
+        else
+        {
+           mdotInflow += tmdot;
+        }
       }
     }
   }
   // scatter back to solution options; not thread safe
+  realm_.solutionOptions_->mdotAlgInflow_ += mdotInflow;
   realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
   realm_.solutionOptions_->mdotAlgOpenIpCount_ += mdotOpenIpCount;
 }
