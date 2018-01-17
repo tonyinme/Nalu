@@ -153,7 +153,9 @@ ComputeMdotAlgorithmDriver::post_work()
     stk::all_reduce_sum(comm, &l_ip, &g_ip, 1);
     solnOpts_.mdotAlgOpenIpCount_ = g_ip;
   //const double finalCorrection = (g_sum[0] + g_sum[1] + g_sum[2])/g_ip;
-    const double finalCorrection = (g_sum[1])/(-g_sum[2]);
+    // Flow coming in is negative.  Flow going out is positive.  Accumulation is positive.
+    // So, accumulation + flow in should give the negative of what goes out. 
+    const double finalCorrection = -(g_sum[0] + g_sum[1])/(g_sum[2]);
     solnOpts_.mdotAlgOpenCorrection_ = finalCorrection;
     solnOpts_.mdotAlgOpenIpCount_ = g_ip;
     correct_open_mdot(finalCorrection);
