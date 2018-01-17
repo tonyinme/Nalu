@@ -131,7 +131,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
     
     const stk::mesh::Bucket::size_type length   = b.size();
 
-    mdotOpenIpCount += length*num_face_nodes;
+  //mdotOpenIpCount += length*num_face_nodes;
 
     for ( stk::mesh::Bucket::size_type k = 0 ; k < length ; ++k ) {
 
