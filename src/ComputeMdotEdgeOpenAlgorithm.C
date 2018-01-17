@@ -206,7 +206,7 @@ ComputeMdotEdgeOpenAlgorithm::execute()
         mdot[ip] = tmdot;
 
         // Accumulate the mdot (outgoing flow only).
-        if ( tmdot > 0.0)
+        if ( tmdot >= 0.0)
         {
            mdotOpen += tmdot;
            mdotOpenIpCount++;

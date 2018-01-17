@@ -237,8 +237,10 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          double tmdotPreCorrect += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-                                   - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+
+          double tmdotPreCorrect = tmdot;
+          tmdotPreCorrect += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
+                            - projTimeScale*kxj*Gjp*nocFac*pstabFac;
 
           if ( tmdotPreCorrect >= 0.0)
           {
