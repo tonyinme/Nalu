@@ -95,7 +95,8 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   // time step; scale projection time scale by pstabFac (no divide by here)
   const double dt = realm_.get_time_step();
   const double gamma1 = realm_.get_gamma1();
-  const double projTimeScale = dt/gamma1*pstabFac;
+//const double projTimeScale = dt/gamma1*pstabFac;
+  const double projTimeScale = dt/gamma1;
 
   // interpolation for mdot uses nearest node, therefore, n/a
 
@@ -192,29 +193,32 @@ ComputeMdotEdgeOpenAlgorithm::execute()
         const double rhoBip = densityR;
 
         // mdot
-        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx;
+      //double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx;
+        double tmdot = -projTimeScale*(bcPressure-pressureIp)*asq*inv_axdx*pstabFac;
         for ( int j = 0; j < nDim; ++j ) {
           const double axj = areaVec[faceOffSet+j];
           const double coordIp = 0.5*(coordR[j] + coordL[j]);
           const double dxj = coordR[j]  - coordIp;
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
-          tmdot += (rhoBip*vrtm[j]+projTimeScale*Gjp)*axj
-            - projTimeScale*kxj*Gjp*nocFac;
+          tmdot += (rhoBip*vrtm[j]+projTimeScale*Gjp*pstabFac)*axj
+                  - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+        //tmdot += (rhoBip*vrtm[j]+projTimeScale*Gjp)*axj
+        //  - projTimeScale*kxj*Gjp*nocFac;
         }
         // scatter to mdot
         mdot[ip] = tmdot;
 
         // Accumulate the mdot (outgoing flow only).
-        if ( tmdot >= 0.0)
-        {
+      //if ( tmdot >= 0.0)
+      //{
            mdotOpen += tmdot;
            mdotOpenIpCount++;
-        }
-        else
-        {
-           mdotInflow += tmdot;
-        }
+      //}
+      //else
+      //{
+      //   mdotInflow += tmdot;
+      //}
       }
     }
   }

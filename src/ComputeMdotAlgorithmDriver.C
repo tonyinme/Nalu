@@ -327,7 +327,7 @@ ComputeMdotAlgorithmDriver::correct_open_mdot(const double finalCorrection)
         for ( int ip = 0; ip < numScsBip; ++ip ) {
         //mdot[ip] -= finalCorrection;
         //mdotSum += mdot[ip];
-          if ( mdot[ip] > 0.0)
+        //if ( mdot[ip] >= 0.0)
           {
              mdot[ip] *= finalCorrection;
           }

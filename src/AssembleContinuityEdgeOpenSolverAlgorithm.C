@@ -242,16 +242,16 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
           tmdotPreCorrect += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
                             - projTimeScale*kxj*Gjp*nocFac*pstabFac;
 
-          if ( tmdotPreCorrect >= 0.0)
-          {
+      //  if ( tmdotPreCorrect >= 0.0)
+      //  {
               tmdot += (rhoBip*vrtmR[j]*mdotCorrection+projTimeScale*Gjp*pstabFac)*axj
                       - projTimeScale*kxj*Gjp*nocFac*pstabFac;
-          }
-          else 
-          {
-              tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-                      - projTimeScale*kxj*Gjp*nocFac*pstabFac;
-          }
+      //  }
+      //  else 
+      //  {
+      //      tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
+      //              - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+      //  }
         //tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
         //  - projTimeScale*kxj*Gjp*nocFac*pstabFac;
         }
