@@ -145,14 +145,17 @@ public:
 
   // mdot post processing
   double mdotAlgAccumulation_;
-  double mdotAlgInflow_;
-  double mdotAlgOpen_;
+  double mdotAlgMassIn_;
+  double mdotAlgFixedMassOut_;
+  double mdotAlgAdjustableMassOut_;
  
   // global mdot correction alg
   bool activateOpenMdotCorrection_;
   double mdotAlgOpenCorrection_;
-  size_t mdotAlgOpenIpCount_;
-  double mdotAlgOpenPost_;
+  double mdotAlgAdjustableMassOutPost_;
+  size_t mdotAlgMassInIpCount_;
+  size_t mdotAlgFixedMassOutIpCount_;
+  size_t mdotAlgAdjustableMassOutIpCount_;
 
   // turbulence model coeffs
   std::map<TurbulenceModelConstant, double> turbModelConstantMap_;

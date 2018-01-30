@@ -98,7 +98,10 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
   // extract global algorithm options, if active
   const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
     ? realm_.solutionOptions_->mdotAlgOpenCorrection_
-    : 0.0;
+    : 1.0;
+//const double mdotCorrection = realm_.solutionOptions_->activateOpenMdotCorrection_ 
+//  ? realm_.solutionOptions_->mdotAlgOpenCorrection_
+//  : 0.0;
   const double pstabFac = realm_.solutionOptions_->activateOpenMdotCorrection_ 
     ? 0.0
     : 1.0;
@@ -383,6 +386,11 @@ AssembleContinuityElemOpenSolverAlgorithm::execute()
         
         // final mdot
         mdot += -projTimeScale*((pBip-pScs)*asq*inv_axdx*pstabFac + noc*includeNOC*pstabFac);
+
+        // Correct mdot if flow is going out and we are using the global correction.
+        if ( mdot > 0.0 ) {
+           mdot *= mdotCorrection;
+        }
 
         // residual
         p_rhs[nearestNode] -= mdot/projTimeScale;

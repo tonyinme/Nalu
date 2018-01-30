@@ -89,12 +89,15 @@ SolutionOptions::SolutionOptions()
     latitude_(0.0),
     raBoussinesqTimeScale_(-1.0),
     mdotAlgAccumulation_(0.0),
-    mdotAlgInflow_(0.0),
-    mdotAlgOpen_(0.0),
+    mdotAlgMassIn_(0.0),
+    mdotAlgFixedMassOut_(0.0),
+    mdotAlgAdjustableMassOut_(0.0),
     activateOpenMdotCorrection_(false),
     mdotAlgOpenCorrection_(0.0),
-    mdotAlgOpenIpCount_(0),
-    mdotAlgOpenPost_(0.0),
+    mdotAlgAdjustableMassOutPost_(0.0),
+    mdotAlgMassInIpCount_(0),
+    mdotAlgFixedMassOutIpCount_(0),
+    mdotAlgAdjustableMassOutIpCount_(0),
     quadType_("GaussLegendre")
 {
   // nothing to do

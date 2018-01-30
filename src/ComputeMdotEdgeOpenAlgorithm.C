@@ -101,9 +101,10 @@ ComputeMdotEdgeOpenAlgorithm::execute()
   // interpolation for mdot uses nearest node, therefore, n/a
 
   // set accumulation variables
-  double mdotInflow = 0.0;
-  double mdotOpen = 0.0;
-  size_t mdotOpenIpCount = 0;
+  double mdotMassIn = 0.0;
+  double mdotAdjustableMassOut = 0.0;
+  size_t mdotMassInIpCount = 0;
+  size_t mdotAdjustableMassOutIpCount = 0;
 
   // deal with state
   ScalarFieldType &densityNp1 = density_->field_of_state(stk::mesh::StateNP1);
@@ -209,23 +210,25 @@ ComputeMdotEdgeOpenAlgorithm::execute()
         // scatter to mdot
         mdot[ip] = tmdot;
 
-        // Accumulate the mdot (outgoing flow only).
-      //if ( tmdot >= 0.0)
-      //{
-           mdotOpen += tmdot;
-           mdotOpenIpCount++;
-      //}
-      //else
-      //{
-      //   mdotInflow += tmdot;
-      //}
+        // Accumulate the mdot.
+        if ( tmdot > 0.0)
+        {
+           mdotAdjustableMassOut += tmdot;
+           mdotAdjustableMassOutIpCount++;
+        }
+        else
+        {
+           mdotMassIn += tmdot;
+           mdotMassInIpCount++;
+        }
       }
     }
   }
   // scatter back to solution options; not thread safe
-  realm_.solutionOptions_->mdotAlgInflow_ += mdotInflow;
-  realm_.solutionOptions_->mdotAlgOpen_ += mdotOpen;
-  realm_.solutionOptions_->mdotAlgOpenIpCount_ += mdotOpenIpCount;
+  realm_.solutionOptions_->mdotAlgMassIn_ += mdotMassIn;
+  realm_.solutionOptions_->mdotAlgAdjustableMassOut_ += mdotAdjustableMassOut;
+  realm_.solutionOptions_->mdotAlgMassInIpCount_ += mdotMassInIpCount;
+  realm_.solutionOptions_->mdotAlgAdjustableMassOutIpCount_ += mdotAdjustableMassOutIpCount;
 }
 
 } // namespace nalu

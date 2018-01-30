@@ -74,7 +74,10 @@ ComputeMdotInflowAlgorithm::execute()
   const double om_interpTogether = 1.0-interpTogether;
 
   // set accumulation variables
-  double mdotInflow = 0.0;
+  double mdotMassIn = 0.0;
+  double mdotFixedMassOut = 0.0;
+  size_t mdotMassInIpCount = 0;
+  size_t mdotFixedMassOutIpCount = 0;
 
   // nodal fields to gather; gather everything other than what we are assembling
   std::vector<double> ws_densityBC;
@@ -173,13 +176,23 @@ ComputeMdotInflowAlgorithm::execute()
         for ( int j=0; j < nDim; ++j ) {
           mdot += (interpTogether*p_rho_uIp[j] + om_interpTogether*rhoIp*p_uIp[j])*areaVec[ip*nDim+j];
         }
-        
-        mdotInflow += mdot;
+
+        if ( mdot < 0.0 ) {        
+            mdotMassIn += mdot;
+            mdotMassInIpCount++;
+        }
+        else {
+            mdotFixedMassOut += mdot;
+            mdotFixedMassOutIpCount++;
+        }
       }
     }
   }
   // scatter back to solution options
-  realm_.solutionOptions_->mdotAlgInflow_ += mdotInflow;
+  realm_.solutionOptions_->mdotAlgMassIn_ += mdotMassIn;
+  realm_.solutionOptions_->mdotAlgFixedMassOut_ += mdotFixedMassOut;
+  realm_.solutionOptions_->mdotAlgMassInIpCount_ += mdotMassInIpCount;
+  realm_.solutionOptions_->mdotAlgFixedMassOutIpCount_ += mdotFixedMassOutIpCount;
 }
 
 } // namespace nalu

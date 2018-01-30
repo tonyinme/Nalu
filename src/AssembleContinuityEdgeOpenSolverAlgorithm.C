@@ -238,22 +238,13 @@ AssembleContinuityEdgeOpenSolverAlgorithm::execute()
           const double kxj = axj - asq*inv_axdx*dxj;
           const double Gjp = GpdxR[j];
 
-          double tmdotPreCorrect = tmdot;
-          tmdotPreCorrect += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-                            - projTimeScale*kxj*Gjp*nocFac*pstabFac;
-
-      //  if ( tmdotPreCorrect >= 0.0)
-      //  {
-              tmdot += (rhoBip*vrtmR[j]*mdotCorrection+projTimeScale*Gjp*pstabFac)*axj
-                      - projTimeScale*kxj*Gjp*nocFac*pstabFac;
-      //  }
-      //  else 
-      //  {
-      //      tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-      //              - projTimeScale*kxj*Gjp*nocFac*pstabFac;
-      //  }
-        //tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
-        //  - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+          tmdot += (rhoBip*vrtmR[j]+projTimeScale*Gjp*pstabFac)*axj
+                  - projTimeScale*kxj*Gjp*nocFac*pstabFac;
+        }
+        
+        // Correct mdot if flow is going out and we are using the global correction.
+        if ( tmdot > 0.0 ) {
+            tmdot *= mdotCorrection;
         }
 
         // rhs

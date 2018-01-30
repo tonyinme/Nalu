@@ -118,12 +118,15 @@ ComputeMdotAlgorithmDriver::pre_work()
 {
   // set post processing to zero
   solnOpts_.mdotAlgAccumulation_ = 0.0;
-  solnOpts_.mdotAlgInflow_ = 0.0;
-  solnOpts_.mdotAlgOpen_ = 0.0;
+  solnOpts_.mdotAlgMassIn_ = 0.0;
+  solnOpts_.mdotAlgFixedMassOut_ = 0.0;
+  solnOpts_.mdotAlgAdjustableMassOut_ = 0.0;
 
   // also global correction algorithm
   solnOpts_.mdotAlgOpenCorrection_ = 0.0;
-  solnOpts_.mdotAlgOpenIpCount_= 0.0;
+  solnOpts_.mdotAlgMassInIpCount_= 0;
+  solnOpts_.mdotAlgFixedMassOutIpCount_= 0;
+  solnOpts_.mdotAlgAdjustableMassOutIpCount_= 0;
 }
 
 //--------------------------------------------------------------------------
@@ -136,28 +139,41 @@ ComputeMdotAlgorithmDriver::post_work()
   double accumulation = hasMass_ ? compute_accumulation() : 0.0;
   
   // parallel communicate; mdot and accumulation; mdot calculations in execuate provided these values
-  double l_sum[3] = {accumulation, solnOpts_.mdotAlgInflow_, solnOpts_.mdotAlgOpen_};
-  double g_sum[3] = {};
+  double l_sum[4] = {accumulation, solnOpts_.mdotAlgMassIn_, solnOpts_.mdotAlgFixedMassOut_, solnOpts_.mdotAlgAdjustableMassOut_};
+  double g_sum[4] = {};
   stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
-  stk::all_reduce_sum(comm, l_sum, g_sum, 3);
+  stk::all_reduce_sum(comm, l_sum, g_sum, 4);
 
   // set parameters for later usage
   solnOpts_.mdotAlgAccumulation_ = g_sum[0];
-  solnOpts_.mdotAlgInflow_ = g_sum[1];
-  solnOpts_.mdotAlgOpen_ = g_sum[2];
+  solnOpts_.mdotAlgMassIn_ = g_sum[1];
+  solnOpts_.mdotAlgFixedMassOut_ = g_sum[2];
+  solnOpts_.mdotAlgAdjustableMassOut_ = g_sum[3];
 
   // deal with global correction algorithm
   if ( solnOpts_.activateOpenMdotCorrection_ ) {
-    size_t l_ip = solnOpts_.mdotAlgOpenIpCount_;
-    size_t g_ip = 0;
-    stk::all_reduce_sum(comm, &l_ip, &g_ip, 1);
-    solnOpts_.mdotAlgOpenIpCount_ = g_ip;
+    size_t l_ip_fmo = solnOpts_.mdotAlgFixedMassOutIpCount_;
+    size_t g_ip_fmo = 0;
+    stk::all_reduce_sum(comm, &l_ip_fmo, &g_ip_fmo, 1);
+    solnOpts_.mdotAlgFixedMassOutIpCount_ = g_ip_fmo;
+
+    size_t l_ip_amo = solnOpts_.mdotAlgAdjustableMassOutIpCount_;
+    size_t g_ip_amo = 0;
+    stk::all_reduce_sum(comm, &l_ip_amo, &g_ip_amo, 1);
+    solnOpts_.mdotAlgAdjustableMassOutIpCount_ = g_ip_amo;
+
+    size_t l_ip_mi = solnOpts_.mdotAlgMassInIpCount_;
+    size_t g_ip_mi = 0;
+    stk::all_reduce_sum(comm, &l_ip_mi, &g_ip_mi, 1);
+    solnOpts_.mdotAlgMassInIpCount_ = g_ip_mi;
+
   //const double finalCorrection = (g_sum[0] + g_sum[1] + g_sum[2])/g_ip;
     // Flow coming in is negative.  Flow going out is positive.  Accumulation is positive.
     // So, accumulation + flow in should give the negative of what goes out. 
-    const double finalCorrection = -(g_sum[0] + g_sum[1])/(g_sum[2]);
+    // -MassIn-FixedMassOut-accumulation = adjustableMassOut
+    const double finalCorrection = -(g_sum[0] + g_sum[1] + g_sum[2])/(g_sum[3]);
     solnOpts_.mdotAlgOpenCorrection_ = finalCorrection;
-    solnOpts_.mdotAlgOpenIpCount_ = g_ip;
+  //solnOpts_.mdotAlgOpenIpCount_ = g_ip;
     correct_open_mdot(finalCorrection);
   }
 }
@@ -301,7 +317,7 @@ ComputeMdotAlgorithmDriver::correct_open_mdot(const double finalCorrection)
   GenericFieldType *openMassFlowRate = metaData.get_field<GenericFieldType>(metaData.side_rank(), "open_mass_flow_rate");
   if ( NULL != openMassFlowRate ) {
     
-    double mdotSum = 0.0;
+    double mdotAdjustableMassOutPost = 0.0;
 
     // selector (everywhere density lives, locally owned and active) 
     stk::mesh::Selector s_locally_owned = stk::mesh::selectField(*openMassFlowRate)    
@@ -327,20 +343,20 @@ ComputeMdotAlgorithmDriver::correct_open_mdot(const double finalCorrection)
         for ( int ip = 0; ip < numScsBip; ++ip ) {
         //mdot[ip] -= finalCorrection;
         //mdotSum += mdot[ip];
-        //if ( mdot[ip] >= 0.0)
+          if ( mdot[ip] > 0.0 )
           {
              mdot[ip] *= finalCorrection;
+             mdotAdjustableMassOutPost += mdot[ip];
           }
-          mdotSum += mdot[ip];
         }
       }
     }
 
     // provide post corrected mdot
-    double g_mdotSum = 0.0;
+    double g_mdotAdjustableMassOutPost = 0.0;
     stk::ParallelMachine comm = NaluEnv::self().parallel_comm();
-    stk::all_reduce_sum(comm, &mdotSum, &g_mdotSum, 1);
-    solnOpts_.mdotAlgOpenPost_ = g_mdotSum;
+    stk::all_reduce_sum(comm, &mdotAdjustableMassOutPost, &g_mdotAdjustableMassOutPost, 1);
+    solnOpts_.mdotAlgAdjustableMassOutPost_ = g_mdotAdjustableMassOutPost;
   }
 }
 
@@ -352,21 +368,30 @@ ComputeMdotAlgorithmDriver::provide_output()
 {
   // output mass closure
   const double integratedAccumulation = solnOpts_.mdotAlgAccumulation_;
-  const double integratedInflow = solnOpts_.mdotAlgInflow_ ;
-  const double integratedOpen = solnOpts_.mdotAlgOpen_;
-  const double totalMassClosure = integratedAccumulation + integratedInflow + integratedOpen;
-  NaluEnv::self().naluOutputP0() << "Mass Balance Review:  " << std::endl;
-  NaluEnv::self().naluOutputP0() << "Density accumulation: " << integratedAccumulation << std::endl;
-  NaluEnv::self().naluOutputP0() << "Integrated inflow:    " << std::setprecision (16) << integratedInflow << std::endl;
-  NaluEnv::self().naluOutputP0() << "Integrated open:      " << std::setprecision (16) << integratedOpen << std::endl;
+  const double integratedMassIn = solnOpts_.mdotAlgMassIn_ ;
+  const double integratedFixedMassOut = solnOpts_.mdotAlgFixedMassOut_;
+  const double integratedAdjustableMassOut = solnOpts_.mdotAlgAdjustableMassOut_;
+  const double totalMassClosure = integratedAccumulation + integratedMassIn + integratedFixedMassOut + integratedAdjustableMassOut;
+  NaluEnv::self().naluOutputP0() << "Mass Balance Review:" << std::endl;
+  NaluEnv::self().naluOutputP0() << "Density accumulation:          " << integratedAccumulation << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated fixed inflow:       " << std::setprecision (16) << integratedMassIn << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated fixed outflow:      " << std::setprecision (16) << integratedFixedMassOut << std::endl;
+  NaluEnv::self().naluOutputP0() << "Integrated adjustable outflow: " << std::setprecision (16) << integratedAdjustableMassOut << std::endl;
   NaluEnv::self().naluOutputP0() << "Total mass closure:   " << std::setprecision (6) << totalMassClosure << std::endl;
   if ( solnOpts_.activateOpenMdotCorrection_ ) {
-    const size_t ipCount = solnOpts_.mdotAlgOpenIpCount_;
+    const size_t massInIpCount = solnOpts_.mdotAlgMassInIpCount_;
+    const size_t fixedMassOutIpCount = solnOpts_.mdotAlgFixedMassOutIpCount_;
+    const size_t adjustableMassOutIpCount = solnOpts_.mdotAlgAdjustableMassOutIpCount_;
     const double ipCorrection = solnOpts_.mdotAlgOpenCorrection_;
+    const double integratedAdjustableMassOutPost = solnOpts_.mdotAlgAdjustableMassOutPost_;
+    const double totalMassClosurePost = integratedAccumulation + integratedMassIn + integratedFixedMassOut + integratedAdjustableMassOutPost;
+    NaluEnv::self().naluOutputP0() << "Number of fixed inflow boundary integration points:       " << massInIpCount << std::endl;
+    NaluEnv::self().naluOutputP0() << "Number of fixed outflow boundary integration points:      " << fixedMassOutIpCount << std::endl;
+    NaluEnv::self().naluOutputP0() << "Number of adjustable outflow boundary integration points: " << adjustableMassOutIpCount << std::endl;
     NaluEnv::self().naluOutputP0() << "A mass correction of: " << ipCorrection
-                                   << " occurred on: " << ipCount
+                                   << " occurred on: " << adjustableMassOutIpCount << " out of " << adjustableMassOutIpCount + fixedMassOutIpCount << " open boundary integration points"
                                    << " boundary integration points: "  << std::endl;
-    NaluEnv::self().naluOutputP0() << "Post-corrected integrated open: " << std::setprecision (16) << solnOpts_.mdotAlgOpenPost_ << std::endl;
+    NaluEnv::self().naluOutputP0() << "Post-corrected total mass closure: " << std::setprecision (16) << totalMassClosurePost << std::endl;
   }
 }
 
