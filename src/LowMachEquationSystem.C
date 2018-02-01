@@ -1634,8 +1634,19 @@ MomentumEquationSystem::register_wall_bc(
   const WallBoundaryConditionData &wallBCData)
 {
 
-  // push mesh part
-  notProjectedPart_.push_back(part);
+  // find out if this is a wall function approach
+  WallUserData userData = wallBCData.userData_;
+  const bool wallFunctionApproach = userData.wallFunctionApproach_;
+  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
+
+  const std::string bcFieldName = wallFunctionApproach ? "wall_velocity_bc" : "velocity_bc";
+
+  // Only include velocity projection if the wall model is not used
+  if ( not wallFunctionApproach )
+    {
+      // push mesh part
+      notProjectedPart_.push_back(part);
+    }
 
   // algorithm type
   const AlgorithmType algType = WALL;
@@ -1646,13 +1657,6 @@ MomentumEquationSystem::register_wall_bc(
 
   stk::mesh::MetaData &meta_data = realm_.meta_data();
   const unsigned nDim = meta_data.spatial_dimension();
-
-  // find out if this is a wall function approach
-  WallUserData userData = wallBCData.userData_;
-  const bool wallFunctionApproach = userData.wallFunctionApproach_;
-  const bool ablWallFunctionApproach = userData.ablWallFunctionApproach_;
-
-  const std::string bcFieldName = wallFunctionApproach ? "wall_velocity_bc" : "velocity_bc";
 
   // register boundary data; velocity_bc
   VectorFieldType *theBcField = &(meta_data.declare_field<VectorFieldType>(stk::topology::NODE_RANK, bcFieldName));
